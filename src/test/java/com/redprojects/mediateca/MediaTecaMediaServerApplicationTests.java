@@ -1,9 +1,8 @@
 package com.redprojects.mediateca;
 
-import com.redprojects.mediateca.communication.Response;
+import com.redprojects.mediateca.communication.response.Response;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.util.Assert;
 
 import javax.json.Json;
 import javax.json.JsonObject;

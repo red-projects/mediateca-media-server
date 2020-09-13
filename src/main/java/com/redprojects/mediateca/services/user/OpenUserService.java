@@ -1,4 +1,4 @@
-package com.redprojects.mediateca.services;
+package com.redprojects.mediateca.services.user;
 
 import com.redprojects.mediateca.communication.requests.RegisterRequest;
 import com.redprojects.mediateca.entities.User;
@@ -18,13 +18,12 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Service
-public class UserService {
+public class OpenUserService {
 
-
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
 
     @Autowired
-    public UserService(UserRepository userRepository) {
+    public OpenUserService(UserRepository userRepository) {
         this.userRepository = userRepository;
     }
 
@@ -68,6 +67,7 @@ public class UserService {
         return true;
     }
 
+
     public AuthStatus authenticateUser(String username, String password) {
         Optional<User> opUser = userRepository.findByUsername(username);
         if (opUser.isPresent()) {
@@ -87,6 +87,7 @@ public class UserService {
         return AuthStatus.FAILED;
     }
 
+
     public AuthStatus verifyUserEmail(String email, String verificationCode) {
         if (verificationCode.length() > 0) {
             ArrayList<User> users = userRepository.findByEmailAddress(email);
@@ -103,6 +104,7 @@ public class UserService {
         return AuthStatus.FAILED;
     }
 
+
     public String authenticateCredentialsForEmail(String username) {
         Optional<User> opUser = userRepository.findByUsername(username);
         if (opUser.isPresent()) {
@@ -116,6 +118,7 @@ public class UserService {
         return AuthStatus.FAILED.toString();
     }
 
+
     public boolean resetPasswordRequest(String username) {
         Optional<User> optionalUser = userRepository.findByUsername(username);
         if (optionalUser.isPresent()) {
@@ -127,7 +130,5 @@ public class UserService {
         }
         return false;
     }
-
-
 
 }

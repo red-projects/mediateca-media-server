@@ -1,12 +1,13 @@
-package com.redprojects.mediateca.controllers;
+package com.redprojects.mediateca.controllers.user;
 
-import com.redprojects.mediateca.communication.Response;
+import com.redprojects.mediateca.communication.response.Messages;
+import com.redprojects.mediateca.communication.response.Response;
 import com.redprojects.mediateca.communication.requests.RegisterRequest;
 import com.redprojects.mediateca.communication.requests.ResetMethod;
 import com.redprojects.mediateca.communication.requests.ResetPasswordRequest;
 import com.redprojects.mediateca.communication.requests.VerificationRequest;
 import com.redprojects.mediateca.security.JwtUtil;
-import com.redprojects.mediateca.services.UserService;
+import com.redprojects.mediateca.services.user.OpenUserService;
 import com.redprojects.mediateca.utils.AuthStatus;
 import com.redprojects.mediateca.utils.SecurityUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,29 +15,26 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import javax.json.Json;
-import javax.json.JsonObject;
 import javax.servlet.http.HttpServletRequest;
-import java.util.Base64;
+
 
 
 @RestController
 @RequestMapping("/open-services")
 public class OpenServicesController {
 
-    public UserService userService;
+    private final OpenUserService openUserService;
 
     @Autowired
-    public OpenServicesController(UserService userService) {
-        this.userService = userService;
+    public OpenServicesController(OpenUserService openUserService) {
+        this.openUserService = openUserService;
     }
 
     // Open Services Endpoints
     // 1: Register User
     // 2: Authenticate User Credentials
-    // 3: Reset User Password
-    //
+    // 3: Verify User Email Address
+    // 4: Reset User Password
 
     @RequestMapping(value = "/register", method = RequestMethod.POST)
     public ResponseEntity<String> registerUserEndpoint(@RequestBody RegisterRequest request) {
@@ -44,26 +42,29 @@ public class OpenServicesController {
         HttpStatus httpStatus = HttpStatus.CREATED;
 
         // check if username unique
-        if (userService.isUsernameUnique(request.getUsername())) {
+        if (openUserService.isUsernameUnique(request.getUsername())) {
             // check if password meets requirement
-            if (userService.isValidPassword(request.getPassword())) {
+            if (openUserService.isValidPassword(request.getPassword())) {
                 // create new user
-                boolean createUserSuccess = userService.createUser(request);
+                boolean createUserSuccess = openUserService.createUser(request);
                 if (!createUserSuccess) {
                     response.actionFailed();
-                    response.setMessage("Error Creating New User");
+                    response.setMessage(Messages.Failure.USER_CREATION);
                     httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
+                }
+                else {
+                    response.setMessage(Messages.Success.USER_REGISTRATION);
                 }
             }
             else {
                 response.actionFailed();
-                response.setMessage("Password Does Not Meet Requirements");
+                response.setMessage(Messages.Failure.PASSWORD_REQUIREMENT);
                 httpStatus = HttpStatus.ACCEPTED;
             }
         }
         else {
             response.actionFailed();
-            response.setMessage("Username Is Already Associate With Another Account");
+            response.setMessage(Messages.Failure.INVALID_USERNAME);
             httpStatus = HttpStatus.ACCEPTED;
         }
         return ResponseEntity
@@ -72,10 +73,11 @@ public class OpenServicesController {
                 .body(response.toJson());
     }
 
+
     @RequestMapping(value = "/authenticate", method = RequestMethod.POST)
     public ResponseEntity<String> authenticateUserEndpoint(HttpServletRequest request) {
         Response response = new Response("Authenticate User Credentials");
-        HttpStatus httpStatus = HttpStatus.OK;
+        HttpStatus httpStatus = HttpStatus.ACCEPTED;
         String authToken = null;
 
         // get credentials
@@ -88,14 +90,14 @@ public class OpenServicesController {
                 String password = credentials[1];
 
                 // authenticate user credentials
-                AuthStatus status = userService.authenticateUser(username, password);
+                AuthStatus status = openUserService.authenticateUser(username, password);
                 if (status == AuthStatus.FAILED) {
                     response.actionFailed();
-                    response.setMessage("Invalid Credentials");
+                    response.setMessage(Messages.Failure.INVALID_CREDENTIALS);
                 }
                 else if (status == AuthStatus.UNVERIFIED_DEACTIVATED) {
                     response.actionFailed();
-                    response.setMessage("Account Has Not Been Verified Or Is Deactivated");
+                    response.setMessage(Messages.Failure.USER_STATUS);
                 }
                 else {
                     boolean isAdmin = status == AuthStatus.SUCCESS_ADMIN;
@@ -104,13 +106,13 @@ public class OpenServicesController {
             }
             else {
                 response.actionFailed();
-                response.setMessage("Bad Request!");
+                response.setMessage(Messages.Failure.BAD_REQUEST);
                 httpStatus = HttpStatus.BAD_REQUEST;
             }
         }
         else {
             response.actionFailed();
-            response.setMessage("Bad Request!");
+            response.setMessage(Messages.Failure.BAD_REQUEST);
             httpStatus = HttpStatus.BAD_REQUEST;
         }
 
@@ -124,24 +126,28 @@ public class OpenServicesController {
                 .body(response.toJson());
     }
 
+
     @RequestMapping(value = "/verify", method = RequestMethod.POST)
     public ResponseEntity<String> verifyUserEmailEndpoint(@RequestBody VerificationRequest request) {
         Response response = new Response("Verify User Email");
-        HttpStatus httpStatus = HttpStatus.OK;
+        HttpStatus httpStatus = HttpStatus.ACCEPTED;
 
         // get credentials
         String emailAddress = request.getEmailAddress();
         String verificationCode = SecurityUtil.base64Decode(request.getVerificationCode());
         if (verificationCode != null) {
-            AuthStatus status = userService.verifyUserEmail(emailAddress, verificationCode);
+            AuthStatus status = openUserService.verifyUserEmail(emailAddress, verificationCode);
             if (status == AuthStatus.FAILED) {
                 response.actionFailed();
-                response.setMessage("Verification Code Is Invalid Or Incorrect");
+                response.setMessage(Messages.Failure.EMAIL_VERIFICATION);
+            }
+            else {
+                response.setMessage(Messages.Success.EMAIL_VERIFICATION);
             }
         }
         else {
             response.actionFailed();
-            response.setMessage("Bad Request");
+            response.setMessage(Messages.Failure.BAD_REQUEST);
             httpStatus = HttpStatus.BAD_REQUEST;
         }
 
@@ -151,30 +157,31 @@ public class OpenServicesController {
                 .body(response.toJson());
     }
 
+
     @RequestMapping(value = "/reset-password", method = RequestMethod.POST)
     public ResponseEntity<String> resetUserPasswordEndpoint(@RequestBody ResetPasswordRequest request) {
         Response response = new Response("Reset User Password");
-        HttpStatus httpStatus = HttpStatus.OK;
+        HttpStatus httpStatus = HttpStatus.ACCEPTED;
 
         // check for bad request
         if (request.getResetMethod() == ResetMethod.EMAIL) {
             String username = request.getUsername();
 
             // get user information
-            String status = userService.authenticateCredentialsForEmail(username);
+            String status = openUserService.authenticateCredentialsForEmail(username);
             if (!status.contentEquals(AuthStatus.FAILED.toString()) || !status.contentEquals(AuthStatus.UNVERIFIED_DEACTIVATED.toString())) {
                 String email = status;
                 // queue email
-
+                response.setMessage(Messages.Success.RESET_PASSWORD_REQUEST);
             }
             else {
                 response.actionFailed();
-                response.setMessage("Incorrect Credentials");
+                response.setMessage(Messages.Failure.INVALID_CREDENTIALS);
             }
         }
         else {
             response.actionFailed();
-            response.setMessage("Bad Request!");
+            response.setMessage(Messages.Failure.BAD_REQUEST);
             httpStatus = HttpStatus.BAD_REQUEST;
         }
 
@@ -183,4 +190,5 @@ public class OpenServicesController {
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(response.toJson());
     }
+
 }

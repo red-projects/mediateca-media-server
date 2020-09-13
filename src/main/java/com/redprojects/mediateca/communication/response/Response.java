@@ -1,6 +1,7 @@
-package com.redprojects.mediateca.communication;
+package com.redprojects.mediateca.communication.response;
 
 import javax.json.Json;
+import javax.json.JsonArray;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 
@@ -56,6 +57,9 @@ public class Response {
         data.addElement(key, value);
     }
 
+    public void addBodyElement(String key, JsonArray value) {
+        data.addElement(key, value);
+    }
 
     public JsonObject toJsonObject() {
         JsonObjectBuilder jsonBuilder = Json.createObjectBuilder()
@@ -72,62 +76,10 @@ public class Response {
     }
 
 
-     private class Status {
-
-        private String actionSuccess;
-        private String message;
-
-        private Status() {
-            this.actionSuccess = "SUCCEEDED";
-            this.message = "";
-        }
-
-        private boolean getActionSuccess() {
-            return actionSuccess.contentEquals("SUCCEEDED");
-        }
-
-        private void setActionSuccess(boolean actionSuccess) {
-            if (actionSuccess) this.actionSuccess = "SUCCEEDED";
-            else this.actionSuccess = "FAILED";
-        }
-
-        private String getMessage() {
-            return message;
-        }
-
-        private void setMessage(String message) {
-            this.message = message;
-        }
-
-        private JsonObject toJson() {
-            return Json.createObjectBuilder()
-                    .add("actionSuccess", actionSuccess)
-                    .add("message", message)
-                    .build();
-        }
-    }
 
 
-    public class Data {
-        private JsonObjectBuilder dataBuilder;
 
-        public Data() {
-            this.dataBuilder = Json.createObjectBuilder();
-        }
 
-        public void addElement(String key, String value) {
-            this.dataBuilder.add(key, value);
-        }
-
-        public void addElement(String key, JsonObject jsonObject) {
-            this.dataBuilder.add(key, jsonObject);
-        }
-
-        public JsonObject build() {
-            return dataBuilder.build();
-        }
-
-    }
 }
 
 

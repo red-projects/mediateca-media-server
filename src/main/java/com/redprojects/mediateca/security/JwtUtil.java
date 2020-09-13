@@ -76,4 +76,12 @@ public class JwtUtil {
         }
     }
 
+    public static String getUsername(JWTClaimsSet claimsSet) {
+        return claimsSet.getSubject();
+    }
+
+    public static boolean isAdmin(JWTClaimsSet claimsSet) {
+        return Boolean.getBoolean(claimsSet.getClaim("admin").toString());
+    }
+
 }
